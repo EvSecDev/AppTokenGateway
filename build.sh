@@ -1,16 +1,4 @@
 #!/bin/bash
-# Variables
-repoRoot=$(pwd)
-export CGO_ENABLED=0
-GOARCH="amd64"
-GOOS="linux"
-buildFull='false'
-
-if [[ -z $repoRoot ]]; then
-	echo -e "[-] ERROR: Failed to determine current directory" >&2
-	exit 1
-fi
-
 function usage {
 	echo "Usage $0
 Program Build Script and Helpers
@@ -23,13 +11,27 @@ Options:
 "
 }
 
+# Variables
+GOARCH="amd64"
+GOOS="linux"
+readonly outputBinaryName="atg"
+
 while getopts 'a:o:bh' opt; do
 	case "$opt" in
 		'a')
 			GOARCH="$OPTARG"
 			;;
 		'b')
-			buildmode='true'
+			export CGO_ENABLED=0
+			export GOARCH
+			export GOOS
+			echo "[*] Compiling program binary..."
+			go build -o "$outputBinaryName" -trimpath -a -ldflags '-s -w -buildid= -extldflags "-static"' cmd/atg/main.go
+			if [[ $? != 0 ]]; then
+				echo -e "[-] Build Failed"
+			else
+				echo -e "[+] Build complete. Executable located at $(pwd)/$outputBinaryName"
+			fi
 			;;
 		'o')
 			GOOS="$OPTARG"
@@ -39,24 +41,9 @@ while getopts 'a:o:bh' opt; do
 			exit 0
 			;;
 		*)
+			echo -e "ERROR: Unknown option or combination of options." >&2
 			usage
-			exit 0
+			exit 1
 			;;
 	esac
 done
-
-if [[ $buildmode == true ]]; then
-	export GOARCH
-	export GOOS
-	echo "[*] Compiling program binary..."
-	go build -o "$repoRoot"/atg -trimpath -a -ldflags '-s -w -buildid= -extldflags "-static"' ./*.go
-	if [[ $? != 0 ]]; then
-		echo -e "[-] Build Failed"
-	else
-		echo -e "[+] Build complete"
-	fi
-else
-	echo -e "ERROR: Unknown option or combination of options." >&2
-	usage
-	exit 1
-fi
