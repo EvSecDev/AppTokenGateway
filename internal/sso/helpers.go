@@ -6,7 +6,7 @@ import (
 )
 
 func UserFrom(request *http.Request) (claims UserClaims, err error) {
-	value := request.Context().Value(ctxKey{})
+	value := request.Context().Value(CtxKeyUserInfo)
 	claims, ok := value.(UserClaims)
 	if !ok {
 		err = fmt.Errorf("expected type UserClaims but got %T", value)

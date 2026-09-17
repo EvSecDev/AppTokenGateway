@@ -24,8 +24,10 @@ import (
 var webFiles embed.FS
 
 const (
-	TokenAuthPath string = "/auth"
-	TokenRegPath  string = "/register"
+	TokenAuthPath   string = "/auth"
+	TokenRegPath    string = "/register"
+	TokenRevokePath string = "/revoke"
+	TokenListPath   string = "/tokens"
 )
 
 // Create a new server instance
@@ -70,8 +72,24 @@ func (server *Server) SetupHTTP() (err error) {
 	mux.HandleFunc(TokenAuthPath, server.store.NewTokenAuthHandler()) // Endpoint for proxy to validate all requests
 
 	// Private - User authentication required
-	mux.Handle(TokenRegPath, server.provider.RequireAuthenticated()(RegisterHandler(server.store)))      // API for user registering new token through client javascript
-	mux.Handle(sso.UserIntf, server.provider.RequireAuthenticated()(http.FileServer(http.FS(staticFS)))) // Delivering html/css/js to user
+	mux.Handle(TokenRegPath, server.provider.RequireAuthenticated()(RegisterHandler(server.store)))      // API for user registering new token
+	mux.Handle(TokenRevokePath, server.provider.RequireAuthenticated()(RevocationHandler(server.store))) // API for user revoking existing token
+	mux.Handle(TokenListPath, server.provider.RequireAuthenticated()(ListHandler(server.store)))         // API for user listing existing tokens
+
+	// Delivering html/css/js to user
+	fileServer := http.FileServer(http.FS(staticFS))
+	mux.Handle(
+		sso.UserIntf+"/",
+		server.provider.RequireAuthenticated()(
+			http.StripPrefix(sso.UserIntf, fileServer),
+		),
+	)
+
+	log.Printf("Token authorizations : %s\n", TokenAuthPath)
+	log.Printf("Token registrations  : %s\n", TokenRegPath)
+	log.Printf("Token revocations    : %s\n", TokenRevokePath)
+	log.Printf("Token list           : %s\n", TokenListPath)
+	log.Printf("User interface       : %s\n", sso.UserIntf)
 
 	server.http = &http.Server{
 		Handler:      mux,
@@ -95,9 +113,6 @@ func (server *Server) Run() (err error) {
 	} else {
 		log.Printf("Auth server starting at http://%s\n", server.http.Addr)
 	}
-	log.Printf("Token authorizations : %s\n", TokenAuthPath)
-	log.Printf("Token registrations  : %s\n", TokenRegPath)
-	log.Printf("User interface       : %s\n", sso.UserIntf)
 
 	// Listener started in background
 	errCh := make(chan error, 2)

@@ -4,14 +4,18 @@ import (
 	"ATG/internal/sso"
 	"ATG/internal/tokenstore"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"mime"
 	"net/http"
+	"time"
 )
 
 type TokenRegistration struct {
-	Token string `json:"token"`
+	Name    string    `json:"name"`
+	Token   string    `json:"token"`
+	Expires time.Time `json:"expires,omitzero"`
 }
 
 func RegisterHandler(tStore *tokenstore.RuntimeStore) (handler http.HandlerFunc) {
@@ -54,16 +58,16 @@ func RegisterHandler(tStore *tokenstore.RuntimeStore) (handler http.HandlerFunc)
 			return
 		}
 
-		err = tokenstore.ValidateTokenString(regRequest.Token)
+		err = validateTokenRegRequest(regRequest)
 		if err != nil {
-			log.Printf("User %s: Token validation: %v\n", username, err)
+			log.Printf("User %s: Token %s: validation: %v\n", username, regRequest.Name, err)
 			http.Error(response, "Invalid Token", http.StatusBadRequest)
 			return
 		}
 
-		err = tStore.StoreToken(username, regRequest.Token)
+		err = tStore.StoreToken(username, regRequest.Name, regRequest.Token, regRequest.Expires)
 		if err != nil {
-			log.Printf("User %s: Register token: %v\n", username, err)
+			log.Printf("User %s: Token %s: Register: %v\n", username, regRequest.Name, err)
 			http.Error(response, "Failed Registration", http.StatusInternalServerError)
 			return
 		}
@@ -71,13 +75,32 @@ func RegisterHandler(tStore *tokenstore.RuntimeStore) (handler http.HandlerFunc)
 		// Test validation before returning ok
 		testSuccess, err := tStore.IsTokenAuthorized(regRequest.Token)
 		if !testSuccess {
-			log.Printf("User %s: New token failed verification test: %v\n", username, err)
+			log.Printf("User %s: Token %s: New token failed verification test: %v\n", username, regRequest.Name, err)
 			http.Error(response, "Failed verification test", http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("Successfully registered new API token for user %s (source %s)", username, request.RemoteAddr)
+		log.Printf("Successfully registered new API token %s for user %s (source %s)", regRequest.Name, username, request.RemoteAddr)
 		response.WriteHeader(http.StatusOK)
+	}
+	return
+}
+
+func validateTokenRegRequest(regRequest TokenRegistration) (err error) {
+	err = tokenstore.ValidateTokenString(regRequest.Token)
+	if err != nil {
+		return
+	}
+
+	err = tokenstore.ValidateTokenName(regRequest.Name)
+	if err != nil {
+		return
+	}
+
+	if regRequest.Expires.After(time.Now().Add(tokenstore.MaximumTokenExpiration)) {
+		err = fmt.Errorf("token expiry time is too far in future (must be less than %s)",
+			tokenstore.MaximumTokenExpiration.String())
+		return
 	}
 	return
 }

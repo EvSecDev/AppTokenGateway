@@ -44,5 +44,7 @@ func CreateTemplate(cfgPath string) (err error) {
 		err = fmt.Errorf("failed file write: %w", err)
 		return
 	}
+
+	fmt.Printf("Successfully wrote template configuration to %s\n", cfgPath)
 	return
 }

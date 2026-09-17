@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	UserIntf  string = "/"
+	UserIntf  string = "/atgui"
 	UserLogin string = "/login"
 	Callback  string = "/callback"
 

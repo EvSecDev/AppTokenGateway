@@ -1,0 +1,388 @@
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #1e1e1e;
+  color: #fff;
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px 20px;
+}
+
+.container {
+  background: #2a2a2a;
+  padding: 24px;
+  border-radius: 8px;
+  width: 480px;
+  max-width: 100%;
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 1.3rem;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.subtitle {
+  text-align: center;
+  font-size: 0.8rem;
+  color: #666;
+  margin-bottom: 20px;
+}
+
+.section {
+  margin-bottom: 24px;
+}
+
+.section h3 {
+  font-size: 0.95rem;
+  color: #aaa;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 16px;
+  font-weight: 600;
+}
+
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-row {
+  display: flex;
+  gap: 32px;
+  flex-wrap: wrap;
+}
+
+.form-row .form-group {
+  flex: 1;
+  min-width: 140px;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.slider-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.len-num {
+  width: 60px;
+  padding: 6px 8px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #333;
+  color: #fff;
+  font-size: 0.9rem;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.len-num::-webkit-inner-spin-button,
+.len-num::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.token-input,
+.name-input,
+.exp-select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #333;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.token-input {
+  font-family: monospace;
+  font-size: 0.8rem;
+  word-break: break-all;
+}
+
+.token-input::placeholder,
+.name-input::placeholder {
+  color: #666;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 4px;
+  background: #007bff;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.15s;
+}
+
+#gen {
+  margin-top: 16px;
+}
+
+button.secondary {
+  background: transparent;
+  border: 1px solid #555;
+  color: #ccc;
+}
+
+button.secondary:hover {
+  background: #333;
+  border-color: #666;
+}
+
+button:hover {
+  background: #0056b3;
+}
+
+button.danger {
+  background: #dc3545;
+  width: auto;
+  padding: 5px 12px;
+  margin-top: 0;
+  font-size: 0.8rem;
+}
+
+button.danger:hover {
+  background: #a71d2a;
+}
+
+button.danger.confirm {
+  background: #ff6b6b;
+  animation: pulse 0.6s ease infinite alternate;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.7;
+  }
+}
+
+.message {
+  margin-top: 12px;
+  font-size: 0.9rem;
+  min-height: 1.2em;
+}
+
+.message.success,
+.message.error {
+  animation: msgFade 5s ease forwards;
+}
+
+.message.success {
+  color: #28a745;
+}
+
+.message.error {
+  color: #dc3545;
+}
+
+@keyframes msgFade {
+  0%, 80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.token-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.token-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: #333;
+  border-radius: 4px;
+  margin-bottom: 6px;
+  font-size: 0.9rem;
+  border-left: 3px solid transparent;
+}
+
+.token-list li.exp-expired {
+  border-left-color: #dc3545;
+  background: #3a2a2a;
+}
+
+.token-list li.exp-critical {
+  border-left-color: #fd7e14;
+}
+
+.token-list li.exp-warning {
+  border-left-color: #ffc107;
+}
+
+.token-list li.exp-ok {
+  border-left-color: #28a745;
+}
+
+.token-list li .token-name {
+  font-family: monospace;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-right: 12px;
+}
+
+.token-list li .token-exp {
+  font-size: 0.8rem;
+  font-weight: 500;
+  white-space: nowrap;
+  margin-right: 12px;
+}
+
+.token-list li .token-exp.expired {
+  color: #dc3545;
+}
+
+.token-list li .token-exp.critical {
+  color: #fd7e14;
+}
+
+.token-list li .token-exp.warning {
+  color: #ffc107;
+}
+
+.token-list li .token-exp.ok {
+  color: #28a745;
+}
+
+.empty-state {
+  display: none;
+  color: #666;
+  font-size: 0.9rem;
+  padding: 8px 0;
+  text-align: center;
+}
+
+.token-list:empty + .empty-state {
+  display: block;
+}
+
+.label {
+  display: block;
+  font-size: 0.85rem;
+  color: #aaa;
+  margin-bottom: 10px;
+}
+
+.divider {
+  border: none;
+  border-top: 1px solid #444;
+  margin: 20px 0;
+}
+
+.token-box {
+  display: none;
+  margin-top: 12px;
+}
+
+.token-box:has(.token-input:not(:placeholder-shown)) {
+  display: block;
+}
+
+.token-box .token-input {
+  margin-bottom: 10px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.actions button {
+  flex: 1;
+}
+
+.exp-mode input[type="radio"] {
+  margin: 0;
+  width: 14px;
+  height: 14px;
+  accent-color: #007bff;
+}
+
+.exp-options {
+  display: none;
+  padding: 8px 0 4px;
+}
+
+.exp-options.visible {
+  display: block;
+}
+
+.exp-mode {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.exp-mode label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.exp-relative,
+.exp-absolute {
+  display: none;
+  gap: 8px;
+  align-items: center;
+}
+
+.exp-options:has(#expModeRelative:checked) .exp-relative,
+.exp-options:has(#expModeAbsolute:checked) .exp-absolute {
+  display: flex;
+}
+
+.exp-relative input,
+.exp-relative select,
+.exp-absolute input {
+  padding: 8px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  background: #333;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.exp-relative input[type="number"] {
+  width: 70px;
+}
+
+.exp-relative select {
+  width: 100px;
+}
+
+.exp-preview {
+  font-size: 0.8rem;
+  color: #28a745;
+  margin-top: 6px;
+  min-height: 1em;
+}
+
+.exp-preview.error {
+  color: #dc3545;
+}

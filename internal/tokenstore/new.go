@@ -1,6 +1,7 @@
 package tokenstore
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,12 +13,12 @@ import (
 // Initializes on disk storage if it does not exist.
 func New(tokenStorePath string, tokenHeaders []string) (store *RuntimeStore, err error) {
 	store = &RuntimeStore{
-		keyStorePath: tokenStorePath,
-		httpHeaders:  tokenHeaders,
-		auth: authorizedTokens{
-			UserKeys: make(map[string][]byte),
+		storePath:   tokenStorePath,
+		httpHeaders: tokenHeaders,
+		diskStore: TokenStorage{
+			UserKeys: make(map[string]map[string]Token),
 		},
-		authorizedKeys: make(map[string]bool),
+		authorizedTokens: make(map[string]Token),
 	}
 
 	log.Printf("Loading API key store file from '%s'\n", tokenStorePath)
@@ -25,8 +26,8 @@ func New(tokenStorePath string, tokenHeaders []string) (store *RuntimeStore, err
 	authKeysFile, err := os.ReadFile(tokenStorePath)
 	switch {
 	case errors.Is(err, os.ErrNotExist):
-		var emptyKeyMap authorizedTokens
-		emptyKeyMap.UserKeys = make(map[string][]byte)
+		var emptyKeyMap TokenStorage
+		emptyKeyMap.UserKeys = make(map[string]map[string]Token)
 
 		var newKeyStore []byte
 		newKeyStore, err = json.Marshal(emptyKeyMap)
@@ -41,18 +42,37 @@ func New(tokenStorePath string, tokenHeaders []string) (store *RuntimeStore, err
 			return
 		}
 
-		store.auth = emptyKeyMap
+		store.diskStore = emptyKeyMap
 	case err == nil:
-		err = json.Unmarshal(authKeysFile, &store.auth)
+		strictDecoder := json.NewDecoder(bytes.NewReader(authKeysFile))
+		strictDecoder.DisallowUnknownFields()
+		err = strictDecoder.Decode(&store.diskStore)
 		if err != nil {
 			err = fmt.Errorf("failed to parse key store file: %w", err)
 			return
 		}
 
-		store.authorizedKeys = reverseAuthKeysMap(store.auth.UserKeys)
+		store.updateAuthorizedTokens()
 	default:
 		err = fmt.Errorf("failed to read key store file: %w", err)
 		return
 	}
 	return
+}
+
+// Updates the authorized token view from the diskStore
+func (store *RuntimeStore) updateAuthorizedTokens() {
+	store.authorizedTokensMutex.Lock()
+	defer store.authorizedTokensMutex.Unlock()
+
+	store.diskStoreMutex.RLock()
+	defer store.diskStoreMutex.RUnlock()
+
+	tokenList := make(map[string]Token, len(store.diskStore.UserKeys))
+	for _, tokens := range store.diskStore.UserKeys {
+		for _, token := range tokens {
+			tokenList[string(token.Hash)] = token
+		}
+	}
+	store.authorizedTokens = tokenList
 }
