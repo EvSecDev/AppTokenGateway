@@ -64,26 +64,13 @@ server {
         proxy_pass http://app-backend.example.com;
     }
 
+    location ~ ^/(register|tokens|revoke|login|callback|auth)$ {
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_pass http://localhost:8080;
+    }
     location /atgui {
+        proxy_set_header X-Forwarded-For $remote_addr;
         proxy_pass http://localhost:8080/atgui;
-    }
-    location = /register {
-        proxy_pass http://localhost:8080/register;
-    }
-    location = /tokens {
-        proxy_pass http://localhost:8080/tokens;
-    }
-    location = /revoke {
-        proxy_pass http://localhost:8080/revoke;
-    }
-    location = /login {
-        proxy_pass http://localhost:8080/login;
-    }
-    location = /callback {
-        proxy_pass http://localhost:8080/callback;
-    }
-    location = /auth {
-        proxy_pass http://localhost:8080/auth;
     }
 }
 ```

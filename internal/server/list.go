@@ -23,17 +23,18 @@ func ListHandler(tStore *tokenstore.RuntimeStore) (handler http.HandlerFunc) {
 			response.WriteHeader(http.StatusMethodNotAllowed)
 			return
 		}
+		remoteAddr := clientAddr(request)
 
 		claims, err := sso.UserFrom(request)
 		if err != nil {
-			log.Printf("%s: Failed to retrieve claims from request: %v\n", request.RemoteAddr, err)
+			log.Printf("%s: Failed to retrieve claims from request: %v\n", remoteAddr, err)
 			http.Error(response, "Failed to parse request", http.StatusBadRequest)
 			return
 		}
 		username := claims.Email
 
 		if username == "" {
-			log.Printf("%s: Could not extract username from client request\n", request.RemoteAddr)
+			log.Printf("%s: Could not extract username from client request\n", remoteAddr)
 			http.Error(response, "Invalid User", http.StatusBadRequest)
 			return
 		}
@@ -52,14 +53,14 @@ func ListHandler(tStore *tokenstore.RuntimeStore) (handler http.HandlerFunc) {
 
 		listResponse, err := json.Marshal(list)
 		if err != nil {
-			log.Printf("%s: User %s token list failed to marshal: %v\n", request.RemoteAddr, username, err)
+			log.Printf("%s: User %q token list failed to marshal: %v\n", remoteAddr, username, err)
 			http.Error(response, "Failed creating token list", http.StatusInternalServerError)
 			return
 		}
 
 		_, err = response.Write(listResponse)
 		if err != nil {
-			log.Printf("%s: User %s: failed response write: %v\n", request.RemoteAddr, username, err)
+			log.Printf("%s: User %q: failed response write: %v\n", remoteAddr, username, err)
 			http.Error(response, "Failed response write", http.StatusInternalServerError)
 			return
 		}

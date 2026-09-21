@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 )
 
 // Prevents tokens from being written to disk - BLOCKS until no writers remains
@@ -24,7 +23,13 @@ func (store *RuntimeStore) syncDiskStore() (err error) {
 	}
 
 	if store.tempDir != "" {
-		tmpFile := filepath.Join(store.tempDir, "store.tmp")
+		var tmpFile string
+		tmpFile, err = os.MkdirTemp(store.tempDir, "store.tmp*")
+		if err != nil {
+			err = fmt.Errorf("token store tmp file create: %w", err)
+			return
+		}
+
 		err = os.WriteFile(tmpFile, newKeyStore, 0600)
 		if err != nil {
 			err = fmt.Errorf("token store tmp write: %w", err)

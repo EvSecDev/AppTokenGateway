@@ -24,6 +24,9 @@ import (
 var webFiles embed.FS
 
 const (
+	UserIntfPath    string = "/atgui"
+	UserLoginPath   string = "/login"
+	CallbackPath    string = "/callback"
 	TokenAuthPath   string = "/auth"
 	TokenRegPath    string = "/register"
 	TokenRevokePath string = "/revoke"
@@ -65,23 +68,24 @@ func (server *Server) SetupHTTP() (err error) {
 	mux := http.NewServeMux()
 
 	// Public - no OIDC required
-	mux.HandleFunc(sso.UserLogin, server.provider.NewLoginHandler())   // Sends user at first browse to the OIDC provider
-	mux.HandleFunc(sso.Callback, server.provider.NewCallbackHandler()) // Redirect location back from OIDC provider after login
+	mux.HandleFunc(UserLoginPath, LoginHandler(server.provider))   // Sends user at first browse to the OIDC provider
+	mux.HandleFunc(CallbackPath, CallbackHandler(server.provider)) // Redirect location back from OIDC provider after login
 
 	// Public - API Token required (in header)
-	mux.HandleFunc(TokenAuthPath, server.store.NewTokenAuthHandler()) // Endpoint for proxy to validate all requests
+	mux.HandleFunc(TokenAuthPath, TokenAuthHandler(server.store)) // Endpoint for proxy to validate all requests
 
-	// Private - User authentication required
-	mux.Handle(TokenRegPath, server.provider.RequireAuthenticated()(RegisterHandler(server.store)))      // API for user registering new token
-	mux.Handle(TokenRevokePath, server.provider.RequireAuthenticated()(RevocationHandler(server.store))) // API for user revoking existing token
-	mux.Handle(TokenListPath, server.provider.RequireAuthenticated()(ListHandler(server.store)))         // API for user listing existing tokens
+	// Private - User authentication (SSO) required
+	ssoAuthRequired := RequireAuthenticated(server.provider)
+	mux.Handle(TokenRegPath, ssoAuthRequired(RegisterHandler(server.store)))      // API for user registering new token
+	mux.Handle(TokenRevokePath, ssoAuthRequired(RevocationHandler(server.store))) // API for user revoking existing token
+	mux.Handle(TokenListPath, ssoAuthRequired(ListHandler(server.store)))         // API for user listing existing tokens
 
 	// Delivering html/css/js to user
 	fileServer := http.FileServer(http.FS(staticFS))
 	mux.Handle(
-		sso.UserIntf+"/",
-		server.provider.RequireAuthenticated()(
-			http.StripPrefix(sso.UserIntf, fileServer),
+		UserIntfPath+"/",
+		ssoAuthRequired(
+			http.StripPrefix(UserIntfPath, fileServer),
 		),
 	)
 
@@ -89,7 +93,7 @@ func (server *Server) SetupHTTP() (err error) {
 	log.Printf("Token registrations  : %s\n", TokenRegPath)
 	log.Printf("Token revocations    : %s\n", TokenRevokePath)
 	log.Printf("Token list           : %s\n", TokenListPath)
-	log.Printf("User interface       : %s\n", sso.UserIntf)
+	log.Printf("User interface       : %s\n", UserIntfPath)
 
 	server.http = &http.Server{
 		Handler:      mux,

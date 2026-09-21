@@ -29,10 +29,11 @@ func RegisterHandler(tStore *tokenstore.RuntimeStore) (handler http.HandlerFunc)
 			http.Error(response, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
 			return
 		}
+		remoteAddr := clientAddr(request)
 
 		body, err := io.ReadAll(request.Body)
 		if err != nil {
-			log.Printf("%s: Failed to read body: %v\n", request.RemoteAddr, err)
+			log.Printf("%s: Failed to read body: %v\n", remoteAddr, err)
 			http.Error(response, "Failed to read body", http.StatusInternalServerError)
 			return
 		}
@@ -40,34 +41,34 @@ func RegisterHandler(tStore *tokenstore.RuntimeStore) (handler http.HandlerFunc)
 		var regRequest TokenRegistration
 		err = json.Unmarshal(body, &regRequest)
 		if err != nil {
-			log.Printf("%s: Failed to unmarshal registration JSON: %v\n", request.RemoteAddr, err)
+			log.Printf("%s: Failed to unmarshal registration JSON: %v\n", remoteAddr, err)
 			http.Error(response, "Failed to parse request", http.StatusBadRequest)
 			return
 		}
 
 		claims, err := sso.UserFrom(request)
 		if err != nil {
-			log.Printf("%s: Failed to retrieve claims from request: %v\n", request.RemoteAddr, err)
+			log.Printf("%s: Failed to retrieve claims from request: %v\n", remoteAddr, err)
 			http.Error(response, "Failed to parse request", http.StatusBadRequest)
 		}
 		username := claims.Email
 
 		if username == "" {
-			log.Printf("%s: Could not extract username from client request\n", request.RemoteAddr)
+			log.Printf("%s: Could not extract username from client request\n", remoteAddr)
 			http.Error(response, "Invalid User", http.StatusBadRequest)
 			return
 		}
 
 		err = validateTokenRegRequest(regRequest)
 		if err != nil {
-			log.Printf("User %s: Token %s: validation: %v\n", username, regRequest.Name, err)
+			log.Printf("User %q: Token %q: validation: %v\n", username, regRequest.Name, err)
 			http.Error(response, "Invalid Token", http.StatusBadRequest)
 			return
 		}
 
 		err = tStore.StoreToken(username, regRequest.Name, regRequest.Token, regRequest.Expires)
 		if err != nil {
-			log.Printf("User %s: Token %s: Register: %v\n", username, regRequest.Name, err)
+			log.Printf("User %q: Token %q: Register: %v\n", username, regRequest.Name, err)
 			http.Error(response, "Failed Registration", http.StatusInternalServerError)
 			return
 		}
@@ -75,12 +76,12 @@ func RegisterHandler(tStore *tokenstore.RuntimeStore) (handler http.HandlerFunc)
 		// Test validation before returning ok
 		testSuccess, err := tStore.IsTokenAuthorized(regRequest.Token)
 		if !testSuccess {
-			log.Printf("User %s: Token %s: New token failed verification test: %v\n", username, regRequest.Name, err)
+			log.Printf("User %q: Token %q: New token failed verification test: %v\n", username, regRequest.Name, err)
 			http.Error(response, "Failed verification test", http.StatusInternalServerError)
 			return
 		}
 
-		log.Printf("Successfully registered new API token %s for user %s (source %s)", regRequest.Name, username, request.RemoteAddr)
+		log.Printf("Successfully registered new API token %q for user %q (source %s)", regRequest.Name, username, remoteAddr)
 		response.WriteHeader(http.StatusOK)
 	}
 	return
@@ -94,6 +95,12 @@ func validateTokenRegRequest(regRequest TokenRegistration) (err error) {
 
 	err = tokenstore.ValidateTokenName(regRequest.Name)
 	if err != nil {
+		return
+	}
+
+	if regRequest.Expires.Before(time.Now().Add(tokenstore.MinimumTokenExpiration)) {
+		err = fmt.Errorf("token expiry time is too soon in future (must be more than %s)",
+			tokenstore.MaximumTokenExpiration.String())
 		return
 	}
 

@@ -21,6 +21,12 @@ func New(tokenStorePath string, tokenHeaders []string) (store *RuntimeStore, err
 		authorizedTokens: make(map[string]Token),
 	}
 
+	err = store.findTempDirectory()
+	if err != nil {
+		err = fmt.Errorf("failed finding temporary directory: %w", err)
+		return
+	}
+
 	log.Printf("Loading API key store file from '%s'\n", tokenStorePath)
 
 	authKeysFile, err := os.ReadFile(tokenStorePath)
