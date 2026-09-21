@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"golang.org/x/sys/unix"
+	"golang.org/x/time/rate"
 )
 
 // Read in web static files at compile time
@@ -67,18 +68,38 @@ func (server *Server) SetupHTTP() (err error) {
 
 	mux := http.NewServeMux()
 
-	// Public - no OIDC required
-	mux.HandleFunc(UserLoginPath, LoginHandler(server.provider))   // Sends user at first browse to the OIDC provider
-	mux.HandleFunc(CallbackPath, CallbackHandler(server.provider)) // Redirect location back from OIDC provider after login
+	// Middleware
+	ssoAuthRequired := RequireAuthenticated(server.provider)
+	reqLimiter := LimitRequests(rate.NewLimiter(rate.Limit(MaxCallbackRequestsPerSecond), 20))
+	bodySizeLimit := LimitBodySize(MaxBodySize)
 
-	// Public - API Token required (in header)
+	// Public - no OIDC required
+	mux.Handle(UserLoginPath, reqLimiter(LoginHandler(server.provider)))   // Sends user at first browse to the OIDC provider
+	mux.Handle(CallbackPath, reqLimiter(CallbackHandler(server.provider))) // Redirect location back from OIDC provider after login
+
+	// Public - API Token required (in header) - must remain unlimited
 	mux.HandleFunc(TokenAuthPath, TokenAuthHandler(server.store)) // Endpoint for proxy to validate all requests
 
 	// Private - User authentication (SSO) required
-	ssoAuthRequired := RequireAuthenticated(server.provider)
-	mux.Handle(TokenRegPath, ssoAuthRequired(RegisterHandler(server.store)))      // API for user registering new token
-	mux.Handle(TokenRevokePath, ssoAuthRequired(RevocationHandler(server.store))) // API for user revoking existing token
-	mux.Handle(TokenListPath, ssoAuthRequired(ListHandler(server.store)))         // API for user listing existing tokens
+	mux.Handle(TokenRegPath, // API for user registering new token
+		reqLimiter(
+			bodySizeLimit(
+				ssoAuthRequired(RegisterHandler(server.store)),
+			),
+		),
+	)
+	mux.Handle(TokenRevokePath, // API for user revoking existing token
+		reqLimiter(
+			bodySizeLimit(
+				ssoAuthRequired(RevocationHandler(server.store)),
+			),
+		),
+	)
+	mux.Handle(TokenListPath, // API for user listing existing tokens
+		reqLimiter(
+			ssoAuthRequired(ListHandler(server.store)),
+		),
+	)
 
 	// Delivering html/css/js to user
 	fileServer := http.FileServer(http.FS(staticFS))
