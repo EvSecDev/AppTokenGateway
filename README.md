@@ -75,6 +75,9 @@ server {
 }
 ```
 
+Note: `X-Forwarded-For` is only respected if the trusted_proxies array is set in the config.
+Only exact IP addresses are supported for proxy IPs.
+
 ---
 
 Example Systemd Service:

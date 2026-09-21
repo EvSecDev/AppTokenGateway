@@ -44,6 +44,8 @@ func New(configPath string) (server *Server, err error) {
 		return
 	}
 
+	setClientAddressRetriever(server.cfg.TrustedProxies)
+
 	server.store, err = tokenstore.New(server.cfg.KeyStorePath, server.cfg.TokenHeaders)
 	if err != nil {
 		err = fmt.Errorf("token store load: %w", err)

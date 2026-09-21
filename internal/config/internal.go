@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 )
@@ -42,6 +43,14 @@ func validateJSONConfig(cfg *JSONConfig) (err error) {
 	if cfg.ListenPort == "" {
 		err = fmt.Errorf("listen port is empty")
 		return
+	}
+	for index, address := range cfg.TrustedProxies {
+		ip := net.ParseIP(address)
+		if ip == nil {
+			err = fmt.Errorf("invalid trusted proxy %q: not an IP address or CIDR", address)
+			return
+		}
+		cfg.TrustedProxies[index] = ip.String()
 	}
 	return
 }
